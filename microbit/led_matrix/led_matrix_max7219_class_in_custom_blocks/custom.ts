@@ -59,7 +59,8 @@ namespace LedMatrix {
         //if (debug)
         //    serial.writeValue("LedMatrix.setup() begin", 0)
 
-        if (currentMAX7219 != undefined) {
+        //if (currentMAX7219 != undefined) 
+        {
             currentMAX7219 = new MAX7219(_pin_dta, _pin_clk, _pin_cs, _device_num);
             currentMAX7219.init()
 
