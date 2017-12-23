@@ -11,73 +11,9 @@
  * Copyright (C) 2013 - 2016 Maker Works Technology Co., Ltd. All right reserved.
  * http://www.makeblock.cc/
  **************************************************************************/
-/*
-
-  mCore-Board I/O mapping 
-  ----------------------------------------------------------------------------------
-  Arduino mCore-Board     Define  Connector
-  ----------------------------------------------------------------------------------
-  D00(RXD)                Wireless Module
-  D01(TXD)                Wireless Module
-  D02   Infrared Receiver
-  D03   Infrared Transmitter
-  D04   MOTOR_02          M2(DIR2) 
-  D05   MOTOR_02          M2(PWM2) 
-  D06   MOTOR_01          M1(PWM1) 
-  D07   MOTOR_01          M1(DIR1) 
-  D08   Buzzer            PORT_06 
-  D09   LineFollower      PORT_02   RJ25-P2(J2):5   
-  D10   LineFollower      PORT_02   RJ25-P2(J2):6 
-  D11   (Servo_01)        PORT_01   RJ25-P1(J1):5  ICSPI:4 D11/MOSI   
-  D12   (Servo_02)        PORT_01   RJ25-P1(J1):6  ICSPI:1 D12/MISC 
-  D13   RGB_LED                                    ICSPI:2 D13/SCK    
-  A0    (LED_Matrix)      PORT_04   RJ25-P4(J4):5
-  A1    (LED_Matrix)      PORT_04   RJ25-P4(J4):6
-  A2                      PORT_03   RJ25-P3(J3):5
-  A3    Ultrasonic Sensor PORT_03   RJ25-P3(J3):6
-  A4                      CN_SDA    RJ25-P1~4(J1~4):1
-  A5                      CN_SCL    RJ25-P1~4(J1~4):2
-  A6    Light Sensor      PORT_06 
-  A7    BUTTON
-  ----------------------------------------------------------------------------------
 
 
-  mCore-Board Connector 
-  ----------------------------------------------
-  Connector    Pin Descruption
-  ----------------------------------------------
-  RJ25-P1(J1) (1)SCL(2)SDA(3)GND(4)5V(5)11(6)12
-  RJ25-P2(J2) (1)SCL(2)SDA(3)GND(4)5V(5)09(6)10
-  RJ25-P3(J3) (1)SCL(2)SDA(3)GND(4)5V(5)A2(6)A3
-  RJ25-P4(J4) (1)SCL(2)SDA(3)GND(4)5V(5)A0(6)A1
-  ----------------------------------------------
-
-
-
-  class MeDCMotor
-      MeDCMotor(MEPORT port);
-      MeDCMotor(uint8_t pwmPin,uint8_t dirPin);
-      void run(int speed);
-      void stop();
-      
-*/
-//#include "mCore.h"
-#include <MeMCore.h>
-
-
-
-/*
- **************************
- *      USE / UNUSE        
- **************************
- */
-#define EN_ULTRA_SONIC
-#define EN_LINE_FOLLOWER
-#define EN_IR_RECEIVER
-#define EN_MOTOR
-#define EN_SERVO
-#define EN_RGBLED
-#define EN_BUZZER
+#include "mBot.h"
 
 
 
@@ -107,202 +43,354 @@ MeBuzzer buzzer;
 #endif
 
 
-#ifdef EN_MOTOR
-MeDCMotor MotorL(M1);
-MeDCMotor MotorR(M2);
-#endif
+
+#ifdef EN_MOTOR // EN_MOTOR
+
+  #define RUN_F 0x01
+  #define RUN_B 0x01<<1
+  #define RUN_L 0x01<<2
+  #define RUN_R 0x01<<3
+  #define STOP 0
+  
+  MeDCMotor MotorL(M1);
+  MeDCMotor MotorR(M2);
+  
+#endif //--------- EN_MOTOR
 
 
-#ifdef EN_SERVO
+
+#ifdef EN_SERVO // EN_SERVO
   #define SERVO_CNT       2
   #define ANGLE_M        90
   Servo servo[SERVO_CNT];
   byte servo_port[] = { 11, 12 };
-#endif // EN_SERVO
+#endif //--------- EN_SERVO
 
 
+
+/*
+ **********************************************************
+ *
+ *              GLOBAL OBJECT DEFINE
+ *
+ **********************************************************
+ */ 
+ 
+// SerialCommand
+#ifdef EN_SCMD  
+  
+  //-- Library to manage serial commands
+  // path = C:\Users\...\Documents\Arduino\libraries\SerialCommand\SerialCommand.h
+  #include <SerialCommand.h>
+  SerialCommand sCmd;  //The SerialCommand object
+#endif // EN_SCMD
+
+
+// Bluetooth Module 
+#ifdef EN_BLUETOOTH
+  // SoftwareSerial
+  #include <SoftwareSerial.h>
+  SoftwareSerial BTSerial(PIN_BT_RX, PIN_BT_TX); 
+#endif // EN_BLUETOOTH
+
+
+
+/*
+ **********************************************************
+ *                                                        *
+ *                 GLOBAL VARIABLES                       *
+ *                                                        *
+ **********************************************************
+ */ 
+#ifdef EN_SCMD  
+  const char programID[]="Otto_todo"; //Each program will have a ID
+  const char name_fac='$'; //Factory name
+  const char name_fir='#'; //First name
+   
+  //-- Movement parameters
+  int T=1000;              //Initial duration of movement
+  int moveId=0;            //Number of movement
+  int moveSize=15;         //Asociated with the height of some movements
+#endif // EN_SCMD
+
+ 
 int moveSpeed = 200;
 int minSpeed = 48;
 int factor = 23;
 
 
-#ifdef EN_BUZZER
-  #define NTD1 294
-  #define NTD2 330
-  #define NTD3 350
-  #define NTD4 393
-  #define NTD5 441
-  #define NTD6 495
-  #define NTD7 556
-  #define NTDL1 147
-  #define NTDL2 165
-  #define NTDL3 175
-  #define NTDL4 196
-  #define NTDL5 221
-  #define NTDL6 248
-  #define NTDL7 278
-  #define NTDH1 589
-  #define NTDH2 661
-  #define NTDH3 700
-  #define NTDH4 786
-  #define NTDH5 882
-  #define NTDH6 990
-  #define NTDH7 112
-#endif // EN_BUZZER
-
-
-#define RUN_F 0x01
-#define RUN_B 0x01<<1
-#define RUN_L 0x01<<2
-#define RUN_R 0x01<<3
-#define STOP 0
 uint8_t motor_sta = STOP;
-enum
-{
-  MODE_A,
-  MODE_B,
-  MODE_C,
-  MODE_D,
-  MODE_E,
-  MODE_F,
-};
 
 
 
+ 
 /*
- **************************
- *      SERVO    
- **************************
- */
-#ifdef EN_SERVO
-void servo_setup() {
-    // port attach 
-    for(int i=0;i<SERVO_CNT;i++) {    
-        servo[i].attach(servo_port[i]);
-        servo[i].write(90);
-        delay(1000);
-        servo[i].detach();
+ **********************************************************
+ *                                                        *
+ *                       SETUP                            *
+ *                                                        *
+ **********************************************************
+ */ 
+uint8_t mode = MODE_A;
+void setup()
+{
+  
+  //Serial.begin(115200);
+  Serial.begin(9600);
+  
+  #ifdef EN_SCMD 
+  scmd_init();
+  #endif 
+  
+  
+  #ifdef EN_MOTOR
+  goStop();
+  #endif 
+  
+  
+  #ifdef EN_RGBLED
+    // RGBLED
+    pinMode(13,OUTPUT);
+    digitalWrite(13,HIGH);
+    delay(300);
+    digitalWrite(13,LOW);
+  
+    //if((rgb.getPort() != port) || rgb.getSlot() != slot)
+    {
+      //rgb.reset(port,slot);
+      //rgb.reset(13);
+       
     }
+    rgb.setpin(13);
+    //rgb.reset(13);
+    rgb.setNumber(2);//mCore default 2 RGB led
+    //rgb.show();
+    //rgb.setColorAt(0,20,0,0);//RGB LED1 set red
+    //rgb.setColorAt(1,0,20,0);//RGB LED2 set green
+    //rgb.show();              //show all led's change.  
+    //delay(1000);
+    // RGBLED
+  #endif // EN_RGBLED
+  
+  
+  #ifdef EN_ULTRA_SONIC
+  ultr.setpin(A3);
+  #endif
+  
+  
+  welcome();
+  
+
+  
+  randomSeed(analogRead(0));
+  
+  
+  #ifdef EN_MOTOR
+  goStop();
+  #endif
+  
+  
+  #ifdef EN_IR_RECEIVER
+  ir.begin();
+  #endif
+  
+  
+  Serial.print("Version: ");
+  //Serial.println(mVersion);
+  
+  
+  #ifdef EN_SERVO
+  servo_setup();
+  #endif
 }
 
 
-// server sg90 Operating speed: 0.1 s/60 degree 
-void servo_shake_head(int servo_no) {
-    servo[servo_no].attach(servo_port[servo_no]);
-    servo[servo_no+1].attach(servo_port[servo_no+1]);
+/*
+  serial transmitter code test code
+  
+  #include <SoftwareSerial.h>
+  SoftwareSerial BTSerial(PIN_BT_RX, PIN_BT_TX); 
+  
+  BTSerial.begin(9600);
+  
+  void loop {
+    ...
+    uart_test_output(&BTSerial);
+    ...
+  }
+*/
+/*
+static long cnt=0;
+void uart_test_output(SoftwareSerial *pSoftSerial){
+  int randNumber = random(0,1000); 
+  pSoftSerial->print(cnt++);
+  pSoftSerial->print("\t");
+  pSoftSerial->print(randNumber);
+  pSoftSerial->println("");
+  delay(2000);
+}
+*/
+
+
+/*
+ **********************************************************
+ *                                                        *
+ *                       LOOP                             *
+ *                                                        *
+ **********************************************************
+ */ 
+void loop()
+{
+  while(1)
+  { 
+    #ifdef EN_IR_RECEIVER
+    get_ir_command();
+    #endif
     
-    int r= 100;
-    for(int i=0;i<3;i++) {
-        servo[servo_no].write(ANGLE_M + r);
-        servo[servo_no+1].write(ANGLE_M - r);
-        delay(160);
-        servo[servo_no].write(ANGLE_M - r);
-        servo[servo_no+1].write(ANGLE_M + r);
-        delay(160); 
+    #ifdef EN_SCMD 
+    //scmd_proc();
+    #endif
+    
+    
+    serial_proc();
+    
+    
+    #ifdef EN_ULTRA_SONIC
+    usonic_proc();
+    #endif
+    
+    switch (mode)
+    {
+      case MODE_A:
+        modeA_proc();
+        break;
+      case MODE_B:
+        modeB_proc();
+        break;
+      case MODE_C:
+        modeC_proc();
+        break;
+      case MODE_E:
+        modeE_proc();
+        break;
+      case MODE_F:
+        modeF_proc();
+        break;
     }
-    servo[servo_no].write(ANGLE_M);
-    servo[servo_no+1].write(ANGLE_M);
-    delay(100); 
-    servo[servo_no].detach();
-    servo[servo_no+1].detach();
-    //delay(10); 
+  }
 }
-#endif // EN_SERVO
-
-
-
-/*
- **************************
- *      ULTRA SONIC    
- **************************
- */
-#ifdef EN_ULTRA_SONIC
-double ultrasonic_distanceCm(uint16_t maxCm)
-{
-    long distance = ultrasonic_measure(maxCm * 55 + 200);
-    return (double)distance / 58.0;
-}
-
-long ultrasonic_measure(unsigned long timeout)
-{
-    int _pin = A3; // A2 A3
-    long duration;
-    // MePort::dWrite2(LOW);
-    // delayMicroseconds(2);
-    // MePort::dWrite2(HIGH);
-    // delayMicroseconds(10);
-    // MePort::dWrite2(LOW);
-    // pinMode(s2, INPUT);
-    // duration = pulseIn(s2, HIGH, timeout);
-    digitalWrite(_pin,LOW);
-    delayMicroseconds(2);
-    digitalWrite(_pin,HIGH);
-    delayMicroseconds(10);
-    digitalWrite(_pin,LOW);
-    pinMode(_pin,INPUT);
-    duration = pulseIn(_pin,HIGH,timeout);
-    return duration;
-}
-#endif // EN_ULTRA_SONIC
-
 
 
 /*
  **************************************
- *  Play_Alarm()
+ *  serial_proc()
  **************************************
  */ 
-//#define PORT_BUZZER 8
-void Play_Alarm()
+char serial_data;
+int uart_buf[3];  //串口接收数据缓存
+void serial_proc()
 {
-
   
-  int i,j;
-  for (i = 0; i < 10; i++) {
-
-    /*  警車警報訊號：
-     *  低頻頻率六五○赫茲至七五○赫茲，高頻頻率一四五○赫茲至一五五○赫茲，
-     *  由低頻升至高頻時間○．二三秒，再由高頻降至低頻為○．一秒
-     */
-    for(j=650;j<1450;j+=5) {
-      //tone(PORT_BUZZER,j);
-        //buzzer.tone(j, 230/((1450-650)/5));
-        buzzer.tone(j, 230/((1450-650)/5));
-      //delay(230/((1450-650)/5));
-    }
-    //tone(PORT_BUZZER,650); 
-    //delay(400); 
-    //noTone(PORT_BUZZER); 
-    //tone(PORT_BUZZER,1450); 
-    delay(50); //100
-    //noTone(PORT_BUZZER); 
-    buzzer.noTone();
+  if(Serial.available()>0){
+    //isAvailable = true;
+    serial_data = Serial.read();
+    uart_buf[0] = serial_data;
+  }
+  switch(uart_buf[0])
+  {
+    case '1':
+      Play_Alarm();
+      Serial.println(F("Received: 1"));
+      break;
+    case '2':
+      #ifdef EN_SERVO
+      servo_shake_head(0);
+      #endif
+      Serial.println(F("Received: 2"));
+      break;
+    case 's':
+      /*  4       5 6 7
+          H       L L H       Off
+          H       H H L       Forward 
+          L       H H H       Backward
+          L       H H L       Right
+          H       H H H       Left
+          IN1 IN2     IN3 IN4
+          
+          
+      */
+      motor_sta = STOP;
+      Serial.println("Stop:");
+      break;
+    case 'w':
+      /*
+        ----------------------------
+        Arduino      L298
+        ----------------------------
+        PIN_4        IN1
+                    ~IN2
+        PIN_5        ENA
+        PIN_6        ENB
+        PIN_7        IN3
+                    ~IN4
+        ----------------------------
         
         
-    #ifdef EN_RGBLED    
-    if(i%2) {
-      // ser red
-      // rgb.setColor(20, 0, 0);
-      rgb.setColorAt(0,20,0,0);//RGB LED1 set red
-      rgb.setColorAt(1,0,0,20);//RGB LED2 set blue
-      rgb.show();
-    } else {
-      // ser blue
-      //rgb.setColor(0, 0, 20);
-      rgb.setColorAt(0,0,0,20);//RGB LED2 set blue
-      rgb.setColorAt(1,20,0,0);//RGB LED2 set red
-      rgb.show(); 
-    }
-    #endif // EN_RGBLED
-  
+        ----------------------------
+        mBot        L298
+        ----------------------------
+        Forward     Right
+        Reverse     Left
+        Right       Reverse
+        Left        Forward
+        ----------------------------
+        
+        
+        L298 Truth Table
+        ----------------------------
+        Input   Output
+        ----------------------------
+        IN1 IN2 IN3 IN4 Description
+        L   L   L   L   Off
+        H   L   H   L   Forward
+        L   H   L   H   Reverse
+        H   H   H   H   Off  
+        ----------------------------
+      */
+      // 4:DIR_H 5:PWM_H 6:PWM_H 7:DIR_L
+      // PWM_H DIR_H DIR_L PWM_H
+      //       H L   H L
+      motor_sta = RUN_F;
+      #ifdef COM_DEBUG
+      Serial.println(F("Forward:")); 
+      #endif
+      break;
+    case 'z':
+      // 4:DIR_L 5:PWM_H 6:PWM_H 7:DIR_H
+      motor_sta = RUN_B;
+      #ifdef COM_DEBUG
+      Serial.println(F("Backward:"));
+      #endif
+      break;
+    case 'd':
+      // 4:DIR_L 5:H 6:H 7:DIR_L
+      motor_sta = RUN_R;
+      #ifdef COM_DEBUG
+      Serial.println(F("Right:"));
+      #endif
+      break;
+    case 'a':
+      // 4:DIR_L 5:H 6:H 7:DIR_L
+      motor_sta = RUN_L;
+      #ifdef COM_DEBUG
+      Serial.println(F("Left:"));
+      #endif
+      break;
   }
   
-  #ifdef EN_RGBLED  
-    // set mode A: All WHITE 
-    rgb.setColor(10, 10, 10);
-    rgb.show(); 
-  #endif 
+  uart_buf[0] = 0;
 }
+
 
 
 /*
@@ -374,199 +462,7 @@ void welcome()
 }
 
 
-/*
- **************************************
- *  setup()
- **************************************
- */ 
-uint8_t mode = MODE_A;
-void setup()
-{
-  Stop();
-  
-  
-  // RGBLED
-  pinMode(13,OUTPUT);
-  digitalWrite(13,HIGH);
-  delay(300);
-  digitalWrite(13,LOW);
-  //if((rgb.getPort() != port) || rgb.getSlot() != slot)
-  {
-    //rgb.reset(port,slot);
-    //rgb.reset(13);
-     
-  }
-  rgb.setpin(13);
-  //rgb.reset(13);
-  rgb.setNumber(2);//mCore default 2 RGB led
-  //rgb.show();
-  //rgb.setColorAt(0,20,0,0);//RGB LED1 set red
-  //rgb.setColorAt(1,0,20,0);//RGB LED2 set green
-  //rgb.show();              //show all led's change.  
-  //delay(1000);
-  // RGBLED
-  
-  ultr.setpin(A3);
-  
-  welcome();
-  
-  
-  //Serial.begin(115200);
-  Serial.begin(9600);
-  
-  randomSeed(analogRead(0));
-  Stop();
-  ir.begin();
-  
-  Serial.print("Version: ");
-  //Serial.println(mVersion);
-  
-  ///
-  servo_setup();
-  ///
-}
-
-
-/*
- **************************************
- *  loop()
- **************************************
- */ 
-void loop()
-{
-  while(1)
-  {
-    
-    //get_ir_command();
-    
-    serial_proc();
-    //usonic_proc();
-    
-    switch (mode)
-    {
-      case MODE_A:
-        modeA_proc();
-        break;
-      case MODE_B:
-        modeB_proc();
-        break;
-      case MODE_C:
-        modeC_proc();
-        break;
-      case MODE_E:
-        modeE_proc();
-        break;
-      case MODE_F:
-        modeF_proc();
-        break;
-    }
-  }
-}
-
-
-/*
- **************************************
- *  serial_proc()
- **************************************
- */ 
-char serial_data;
-int uart_buf[3];  //串口接收数据缓存
-void serial_proc()
-{
-  
-  if(Serial.available()>0){
-    //isAvailable = true;
-    serial_data = Serial.read();
-    uart_buf[0] = serial_data;
-  }
-  switch(uart_buf[0])
-  {
-    case '1':
-      Play_Alarm();
-      Serial.println("  ## Received: 1");
-      break;
-    case '2':
-      servo_shake_head(0);
-      Serial.println("  ## Received: 2");
-      break;
-    case 's':
-      /*  4       5 6 7
-          H       L L H       Off
-          H       H H L       Forward 
-          L       H H H       Backward
-          L       H H L       Right
-          H       H H H       Left
-          IN1 IN2     IN3 IN4
-          
-          
-      */
-      motor_sta = STOP;
-      Serial.println("  ## Stop:");
-      break;
-    case 'w':
-      /*
-        ----------------------------
-        Arduino      L298
-        ----------------------------
-        PIN_4        IN1
-                    ~IN2
-        PIN_5        ENA
-        PIN_6        ENB
-        PIN_7        IN3
-                    ~IN4
-        ----------------------------
-        
-        
-        ----------------------------
-        mBot        L298
-        ----------------------------
-        Forward     Right
-        Reverse     Left
-        Right       Reverse
-        Left        Forward
-        ----------------------------
-        
-        
-        L298 Truth Table
-        ----------------------------
-        Input   Output
-        ----------------------------
-        IN1 IN2 IN3 IN4 Description
-        L   L   L   L   Off
-        H   L   H   L   Forward
-        L   H   L   H   Reverse
-        H   H   H   H   Off  
-        ----------------------------
-      */
-      // 4:DIR_H 5:PWM_H 6:PWM_H 7:DIR_L
-      // PWM_H DIR_H DIR_L PWM_H
-      //       H L   H L
-      motor_sta = RUN_F;
-      Serial.println("  ## Forward:"); 
-      break;
-    case 'z':
-      // 4:DIR_L 5:PWM_H 6:PWM_H 7:DIR_H
-      motor_sta = RUN_B;
-      Serial.println("  ## Backward:");
-      break;
-    case 'd':
-      // 4:DIR_L 5:H 6:H 7:DIR_L
-      motor_sta = RUN_R;
-      Serial.println("  ## Right:");
-      break;
-    case 'a':
-      // 4:DIR_L 5:H 6:H 7:DIR_L
-      motor_sta = RUN_L;
-      Serial.println("  ## Left:");
-      break;
-  }
-  
-  
-  
-  uart_buf[0] = 0;
-}
-
-
+#ifdef EN_IR_RECEIVER
 /*
  ****************************************************************************
     get_ir_command()
@@ -614,7 +510,9 @@ void get_ir_command()
       // 0x44 IR_BUTTON_D,IR_BUTTON_TEST
       case IR_BUTTON_D:
         buzzer.tone(NTD1, 300);
+        #ifdef EN_SERVO
         servo_shake_head(0);
+        #endif 
         break;
        
       // 0x44 IR_BUTTON_E,IR_BUTTON_RETURN
@@ -715,37 +613,74 @@ void get_ir_command()
     time = millis();
   }
 }
-void Forward()
+#endif // EN_IR_RECEIVER
+
+
+
+#ifdef EN_MOTOR
+void goForward()
 {
-  MotorL.run(-moveSpeed);
-  MotorR.run(moveSpeed);
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(-moveSpeed);
+    MotorR.run(moveSpeed);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(moveSpeed);
+    MotorR.run(moveSpeed);
+  #endif
 }
-void Backward()
+void goBackward()
 {
-  MotorL.run(moveSpeed);
-  MotorR.run(-moveSpeed);
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(moveSpeed);
+    MotorR.run(-moveSpeed);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(-moveSpeed);
+    MotorR.run(-moveSpeed);
+  #endif
+
 }
 void TurnLeft()
 {
-  MotorL.run(70 + moveSpeed / 5);
-  MotorR.run(70 + moveSpeed / 5);
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(70 + moveSpeed / 5);
+    MotorR.run(70 + moveSpeed / 5);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(70 + moveSpeed / 5);
+    MotorR.run(-(70 + moveSpeed / 5));
+  #endif
+
 }
 void TurnRight()
 {
-  MotorL.run(-(70 + moveSpeed / 5));
-  MotorR.run(-(70 + moveSpeed / 5));
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(70 + moveSpeed / 5);
+    MotorR.run(70 + moveSpeed / 5);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(-(70 + moveSpeed / 5));
+    MotorR.run(70 + moveSpeed / 5);
+  #endif
 }
 void TurnLeftFast()
 {
-  MotorL.run(255);
-  MotorR.run(255);
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(255);
+    MotorR.run(255);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(255);
+    MotorR.run(-255);
+  #endif
 }
 void TurnRightFast()
 {
-  MotorL.run(-255);
-  MotorR.run(-255);
+  #if(TARGET_BOARD == BOARD_MCORE_V10)
+    MotorL.run(-255);
+    MotorR.run(-255);
+  #elif(TARGET_BOARD == BOARD_ARDUINO_NANO_V10)
+    MotorL.run(-255);
+    MotorR.run(255);
+  #endif
 }
-void Stop()
+void goStop()
 {
   MotorL.run(0);
   MotorR.run(0);
@@ -754,31 +689,9 @@ void ChangeSpeed(int spd)
 {
   moveSpeed = spd;
 }
+#endif // EN_MOTOR
 
 
-/*
- **************************************
- *  usonic_proc()
- **************************************
- */ 
-void usonic_proc()
-{
-    uint8_t d;
-    d = ultr.distanceCm(50);
-    //d = ultr.distanceCm();
-    //d = ultrasonic_distanceCm(50);
-    //if (d < 20) {
-     //   servo_shake_head(0);
-    //}//
-    /**/
-    // dbg
-    Serial.print("Distance : ");
-    Serial.print(d);
-    Serial.println(" cm");
-    // dbg
-    
-    delay(100);// the minimal measure interval is 100 milliseconds
-}
 
 
 /*
@@ -791,10 +704,10 @@ void modeA_proc()
   switch (motor_sta)
   {
     case RUN_F:
-      Forward();
+      goForward();
       break;
     case RUN_B:
-      Backward();
+      goBackward();
       break;
     case RUN_L:
       TurnLeftFast();
@@ -803,7 +716,7 @@ void modeA_proc()
       TurnRightFast();
       break;
     case STOP:
-      Stop();
+      goStop();
       break;
   }
 
@@ -821,7 +734,7 @@ void modeB_proc()
   static long time = millis();
   randomSeed(analogRead(6));
   uint8_t randNumber = random(2);
-  if (d > 25 || d == 0)Forward();
+  if (d > 25 || d == 0) goForward();
   else if (d > 20) {  // >10
     switch (randNumber)
     {
@@ -835,7 +748,7 @@ void modeB_proc()
   }
   else
   {
-    Backward();
+    goBackward();
   }
   delay(100);
 }
@@ -854,7 +767,7 @@ void modeC_proc()
   switch (val)
   {
     case S1_IN_S2_IN:
-      Forward();
+      goForward();
       break;
 
     case S1_IN_S2_OUT:
@@ -866,7 +779,7 @@ void modeC_proc()
       break;
 
     case S1_OUT_S2_OUT:
-      Backward();
+      goBackward();
       break;
   }
 //  delay(50);
@@ -920,6 +833,447 @@ void modeF_proc()
 
 }
 
+
+
+/*
+ **************************************************
+ *                                                *
+ *                   ULTRA SONIC                  *
+ *                                                *
+ **************************************************
+ */
+#ifdef EN_ULTRA_SONIC
+double ultrasonic_distanceCm(uint16_t maxCm)
+{
+    long distance = ultrasonic_measure(maxCm * 55 + 200);
+    return (double)distance / 58.0;
+}
+
+long ultrasonic_measure(unsigned long timeout)
+{
+    int _pin = A3; // A2 A3
+    long duration;
+    // MePort::dWrite2(LOW);
+    // delayMicroseconds(2);
+    // MePort::dWrite2(HIGH);
+    // delayMicroseconds(10);
+    // MePort::dWrite2(LOW);
+    // pinMode(s2, INPUT);
+    // duration = pulseIn(s2, HIGH, timeout);
+    digitalWrite(_pin,LOW);
+    delayMicroseconds(2);
+    digitalWrite(_pin,HIGH);
+    delayMicroseconds(10);
+    digitalWrite(_pin,LOW);
+    pinMode(_pin,INPUT);
+    duration = pulseIn(_pin,HIGH,timeout);
+    return duration;
+}
+
+
+/*
+ **************************************
+ *  usonic_proc()
+ **************************************
+ */ 
+void usonic_proc()
+{
+    uint8_t d;
+    d = ultr.distanceCm(50);
+    //d = ultr.distanceCm();
+    //d = ultrasonic_distanceCm(50);
+    //if (d < 20) {
+     //   servo_shake_head(0);
+    //}//
+    /**/
+    // dbg
+    #if(0) //def COM_DEBUG
+    Serial.print("Distance : ");
+    Serial.print(d);
+    Serial.println(" cm");
+    #endif // COM_DEBUG
+    // dbg
+    
+    delay(100);// the minimal measure interval is 100 milliseconds
+}
+#endif // EN_ULTRA_SONIC
+
+
+
+/*
+ **************************************************
+ *                                                *
+ *                    BUZZER                      *
+ *                                                *
+ **************************************************
+ */
+/*
+ **************************************
+ *  Play_Alarm()
+ **************************************
+ */ 
+#ifdef EN_BUZZER
+//#define PORT_BUZZER 8
+void Play_Alarm()
+{
+
+  
+  int i,j;
+  for (i = 0; i < 10; i++) {
+
+    /*  警車警報訊號：
+     *  低頻頻率六五○赫茲至七五○赫茲，高頻頻率一四五○赫茲至一五五○赫茲，
+     *  由低頻升至高頻時間○．二三秒，再由高頻降至低頻為○．一秒
+     */
+    for(j=650;j<1450;j+=5) {
+      //tone(PORT_BUZZER,j);
+        //buzzer.tone(j, 230/((1450-650)/5));
+        buzzer.tone(j, 230/((1450-650)/5));
+      //delay(230/((1450-650)/5));
+    }
+    //tone(PORT_BUZZER,650); 
+    //delay(400); 
+    //noTone(PORT_BUZZER); 
+    //tone(PORT_BUZZER,1450); 
+    delay(50); //100
+    //noTone(PORT_BUZZER); 
+    buzzer.noTone();
+        
+        
+    #ifdef EN_RGBLED    
+    if(i%2) {
+      // ser red
+      // rgb.setColor(20, 0, 0);
+      rgb.setColorAt(0,20,0,0);//RGB LED1 set red
+      rgb.setColorAt(1,0,0,20);//RGB LED2 set blue
+      rgb.show();
+    } else {
+      // ser blue
+      //rgb.setColor(0, 0, 20);
+      rgb.setColorAt(0,0,0,20);//RGB LED2 set blue
+      rgb.setColorAt(1,20,0,0);//RGB LED2 set red
+      rgb.show(); 
+    }
+    #endif // EN_RGBLED
+  
+  }
+  
+  #ifdef EN_RGBLED  
+    // set mode A: All WHITE 
+    rgb.setColor(10, 10, 10);
+    rgb.show(); 
+  #endif 
+}
+#endif // EN_BUZZER
+
+
+
+/*
+ **************************************************
+ *                                                *
+ *                    SERVO                       *
+ *                                                *
+ **************************************************
+ */
+#ifdef EN_SERVO
+void servo_setup() {
+    // port attach 
+    for(int i=0;i<SERVO_CNT;i++) {    
+        servo[i].attach(servo_port[i]);
+        servo[i].write(90);
+        delay(1000);
+        servo[i].detach();
+    }
+}
+
+
+// server sg90 Operating speed: 0.1 s/60 degree 
+void servo_shake_head(int servo_no) {
+    servo[servo_no].attach(servo_port[servo_no]);
+    servo[servo_no+1].attach(servo_port[servo_no+1]);
+    
+    int r= 100;
+    for(int i=0;i<3;i++) {
+        servo[servo_no].write(ANGLE_M + r);
+        servo[servo_no+1].write(ANGLE_M - r);
+        delay(160);
+        servo[servo_no].write(ANGLE_M - r);
+        servo[servo_no+1].write(ANGLE_M + r);
+        delay(160); 
+    }
+    servo[servo_no].write(ANGLE_M);
+    servo[servo_no+1].write(ANGLE_M);
+    delay(100); 
+    servo[servo_no].detach();
+    servo[servo_no+1].detach();
+    //delay(10); 
+}
+#endif // EN_SERVO
+
+
+
+/*
+ **********************************************************
+ *
+ *              SERIAL COMMAND
+ *
+ **********************************************************
+ */ 
+#ifdef EN_SCMD  
+/*
+ **************************************
+ *  scmd_init()
+ **************************************
+ */ 
+void scmd_init() {
+  BTSerial.begin(9600);   ///
+  sCmd.setSoftwareSerial(&BTSerial);
+  
+  // Setup callbacks for SerialCommand commands 
+  sCmd.addCommand("S", receiveStop);      //  sendAck & sendFinalAck
+  sCmd.addCommand("M", receiveMovement);  //  sendAck & sendFinalAck
+  
+  //sCmd.addCommand("L", receiveLED);       //  sendAck & sendFinalAck
+  sCmd.addCommand("T", recieveBuzzer);      //  sendAck & sendFinalAck
+  //sCmd.addCommand("M", receiveMovement);  //  sendAck & sendFinalAck
+  //sCmd.addCommand("H", receiveGesture);   //  sendAck & sendFinalAck
+  //sCmd.addCommand("K", receiveSing);      //  sendAck & sendFinalAck
+  //sCmd.addCommand("C", receiveTrims);     //  sendAck & sendFinalAck
+  //sCmd.addCommand("G", receiveServo);     //  sendAck & sendFinalAck
+  //sCmd.addCommand("R", receiveName);      //  sendAck & sendFinalAck
+  //sCmd.addCommand("E", requestName);
+  //sCmd.addCommand("D", requestDistance);
+  //sCmd.addCommand("N", requestNoise);
+  //sCmd.addCommand("B", requestBattery);
+  //sCmd.addCommand("I", requestProgramId);   
+  
+  //sCmd.addDefaultHandler(receiveStop);
+  sCmd.setDefaultHandler(receiveUnrecognized);  
+}
+
+/*
+ **************************************
+ *  scmd_proc()
+ **************************************
+ */ 
+void scmd_proc()
+{
+  byte c;
+  if (BTSerial.available() > 0) 
+  { 
+    //Serial.println("sCmd.readAvailable()");;
+    sCmd.readSerial();
+    
+    //If Otto is moving yet
+    //if (Otto.getRestState()==false) {
+    //    move(moveId);
+    //}
+  } 
+}
+
+/*
+ **********************************************************
+ *
+ *              CALLBACK FUNCTION
+ *
+ **********************************************************
+ */ 
+ 
+/*
+ **************************************
+ *  receiveUnrecognized()
+ **************************************
+ */ 
+
+// This gets set as the default handler, and gets called when no other command matches.
+void receiveUnrecognized(const char *command) {
+  Serial.println("receiveUnrecognized()... What?");
+}
+
+//-- Function to receive Stop command.
+//void receiveStop(){ old
+void receiveStop(const char *command){
+  Serial.println(F("receivegoStop()..."));
+  sendAck();
+  //myL9110.gogoStop();
+  sendFinalAck();
+
+}
+
+//-- Function to receive buzzer commands
+void recieveBuzzer(const char *command){
+    
+  #ifdef COM_DEBUG
+  Serial.println(F("recieveBuzzer()"));
+  #endif // COM_DEBUG
+      
+  //sendAck & stop if necessary
+  sendAck();
+
+  welcome();
+
+  sendFinalAck();
+
+}
+
+
+//-- Function to receive movement commands
+void receiveMovement(const char *command){
+
+    #ifdef COM_DEBUG
+    Serial.print(F("receiveMovement()"));
+    #endif
+    
+    sendAck();
+
+    //if (Otto.getRestState()==true){
+    //    Otto.setRestState(false);
+    //}
+
+    //Definition of Movement Bluetooth commands
+    // M  MoveID  T   MoveSize  
+    // M 1      1000                GoForward    
+    
+    
+    char *arg; 
+    arg = sCmd.next(); 
+    if (arg != NULL) {moveId=atoi(arg);}
+    else {
+      //Otto.putMouth(xMouth);
+      //delay(2000);
+      //Otto.clearMouth();
+      moveId=0; //stop
+    }
+    
+    arg = sCmd.next(); 
+    if (arg != NULL) {T=atoi(arg);}
+    else{
+      T=1000;
+    }
+
+    arg = sCmd.next(); 
+    if (arg != NULL) {moveSize=atoi(arg);}
+    else{
+      moveSize =15;
+    }
+}
+
+
+//-- Function to execute the right movement according the movement command received.
+void move(int moveId){
+
+  bool manualMode = false;
+  
+  #ifdef COM_DEBUG
+  Serial.print(F("move()"));
+  Serial.println(moveId,HEX);
+  #endif
+
+  switch (moveId) {
+    case 0:
+      //Otto.home();
+      //myL9110.gogoStop();
+      break;
+    case 1: // "M 1 1000" GoForward
+      //Otto.walk(1,T,1);
+      //myL9110.goForward();
+      break;
+    case 2: // "M 2 1000" GoBackward
+      //Otto.walk(1,T,-1);
+      //myL9110.goBackward();
+      break;
+    case 3: // "M 3 1000"
+      //Otto.turn(1,T,1);
+      //myL9110.turnLeft();
+      break;
+    case 4: // "M 4 1000""
+      //Otto.turn(1,T,-1);
+      //myL9110.turnRight();
+      break;
+    case 5: // "M 5 1000 30" 
+      //Otto.updown(1,T,moveSize);
+      break;
+
+    default:
+        manualMode = true;
+      break;
+  }
+
+  if(!manualMode){
+    sendFinalAck();
+  }
+       
+}
+
+
+//-- Function to send battery voltage percent
+void requestBattery(const char *command){
+
+    //Otto.home();  //stop if necessary
+
+    //The first read of the batery is often a wrong reading, so we will discard this value. 
+    //double batteryLevel = Otto.getBatteryLevel();
+
+    BTSerial.print(F("&&"));
+    BTSerial.print(F("B "));
+    //BTSerial.print(batteryLevel);
+    BTSerial.println(F("%%"));
+    BTSerial.flush();
+}
+
+
+//-- Function to send program ID
+void requestProgramId(const char *command){
+
+  //Otto.home();   //stop if necessary
+
+  BTSerial.print(F("&&"));
+  BTSerial.print(F("I "));
+  //BTSerial.print(programID);
+  BTSerial.println(F("%%"));
+  BTSerial.flush();
+}
+
+
+//-- Function to send Ack comand (A)
+// "&&A%%"
+void sendAck(){
+
+  delay(30);
+
+  BTSerial.print(F("&&"));
+  BTSerial.print(F("A"));
+  BTSerial.println(F("%%"));
+  BTSerial.flush();
+  
+  Serial.print(F("&&"));
+  Serial.print(F("A"));
+  Serial.println(F("%%"));
+  Serial.flush();
+}
+
+
+//-- Function to send final Ack comand (F)
+// "&&F%%"
+void sendFinalAck(){
+
+  delay(30);
+
+  BTSerial.print(F("&&"));
+  BTSerial.print(F("F"));
+  BTSerial.println(F("%%"));
+  BTSerial.flush();
+  
+  Serial.print(F("&&"));
+  Serial.print(F("F"));
+  Serial.println(F("%%"));
+  Serial.flush();
+}
+
+#endif // EN_SCMD  
+  
+  
+  
 
 
 
